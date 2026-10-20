@@ -1,2 +1,3 @@
 manifests/db/secret.yml
 *.log
+k8s/base/01-secret.yml

@@ -56,3 +56,40 @@ App disponible en http://localhost:30080
     kubectl logs -l app=backend -n devops-portfolio --tail=20
     kubectl rollout history deployment/backend -n devops-portfolio
     kubectl rollout undo deployment/backend -n devops-portfolio
+
+## TP09B - Resiliencia: namespaces, rolling update y rollback
+
+Mismo cluster, ahora con dos entornos aislados por namespace. Los manifiestos de k8s/base se
+aplican a cada namespace con -n, por eso no llevan namespace adentro.
+
+| Entorno | Namespace | Acceso (NodePort) |
+|---|---|---|
+| Staging | staging | http://localhost:30081 |
+| Produccion | production | http://localhost:30082 |
+
+Cada namespace tiene su propia base de datos: una nota creada en staging no aparece en production.
+
+### Secret e imagenes
+
+    cp k8s/base/01-secret.yml.example k8s/base/01-secret.yml
+    # editar las claves (el archivo real esta en el .gitignore)
+    k3d image import postgres:16-alpine busybox:1.36 -c mi-cluster
+
+### Despliegue
+
+    ./scripts/deploy-env.sh staging
+    ./scripts/deploy-env.sh production
+
+### Release roto y rollback
+
+    ./scripts/simular-fallo-prod.sh
+    kubectl get pods -n production -l app=notes-backend
+    kubectl rollout history deployment/notes-backend -n production
+    kubectl rollout undo deployment/notes-backend -n production
+
+Con maxUnavailable 0 los pods viejos no se apagan hasta que el nuevo esta listo: la app siguio
+respondiendo 200 durante el release roto.
+
+### Auditoria
+
+    ./scripts/verificar-k8s-resiliencia.sh
